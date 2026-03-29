@@ -1,0 +1,136 @@
+main:
+  params: [input]
+  steps:
+    # ------------------------------------------------
+    # INITIALIZE
+    # ------------------------------------------------
+    - init:
+        assign:
+          - entity_name: "products"
+          - dataset: "dummyjson_dw_dev"
+          - project_id: "srushti-jadhav-1770273740"
+          - service_url: "https://dummyjson-data-v2-895657229847.asia-southeast1.run.app"
+
+    # ------------------------------------------------
+    # INGESTION (Cloud Run)
+    # ------------------------------------------------
+    - call_ingestion:
+        call: http.post
+        args:
+          url: ${service_url}
+          body:
+            entity_name: ${entity_name}
+        result: ingestion_response
+
+    - check_ingestion:
+        switch:
+          - condition: ${ingestion_response.body.status == "FAILED"}
+            return:
+              status: "FAILED"
+              failed_step: "INGESTION"
+              error: ${ingestion_response.body.error}
+
+          - condition: ${ingestion_response.body.status == "NO_DATA"}
+            return:
+              status: "NO_DATA"
+              message: "No new data available"
+
+    # ------------------------------------------------
+    # BRONZE
+    # ------------------------------------------------
+    - bronze:
+        call: googleapis.bigquery.v2.jobs.insert
+        args:
+          projectId: ${project_id}
+          body:
+            jobReference:
+              location: "asia-southeast1"
+            configuration:
+              query:
+                useLegacySql: false
+                query: ${"CALL " + dataset + ".sp_bronze_products('" + ingestion_response.body.gcs_uri + "')"}
+
+    # ------------------------------------------------
+    # SILVER PRODUCTS
+    # ------------------------------------------------
+    - silver_products:
+        call: googleapis.bigquery.v2.jobs.insert
+        args:
+          projectId: ${project_id}
+          body:
+            jobReference:
+              location: "asia-southeast1"
+            configuration:
+              query:
+                useLegacySql: false
+                query: ${"CALL " + dataset + ".sp_silver_products()"}
+
+    # ------------------------------------------------
+    # SILVER REVIEWS
+    # ------------------------------------------------
+    - silver_reviews:
+        call: googleapis.bigquery.v2.jobs.insert
+        args:
+          projectId: ${project_id}
+          body:
+            jobReference:
+              location: "asia-southeast1"
+            configuration:
+              query:
+                useLegacySql: false
+                query: ${"CALL " + dataset + ".sp_silver_product_reviews()"}
+
+    # ------------------------------------------------
+    # DATA QUALITY
+    # ------------------------------------------------
+    - dq_check:
+        call: googleapis.bigquery.v2.jobs.insert
+        args:
+          projectId: ${project_id}
+          body:
+            jobReference:
+              location: "asia-southeast1"
+            configuration:
+              query:
+                useLegacySql: false
+                query: ${"CALL " + dataset + ".sp_dq_products()"}
+
+    # ------------------------------------------------
+    # GOLD
+    # ------------------------------------------------
+    - gold:
+        call: googleapis.bigquery.v2.jobs.insert
+        args:
+          projectId: ${project_id}
+          body:
+            jobReference:
+              location: "asia-southeast1"
+            configuration:
+              query:
+                useLegacySql: false
+                query: ${"CALL " + dataset + ".sp_gold_products()"}
+
+    # ------------------------------------------------
+    # METADATA UPDATE
+    # ------------------------------------------------
+    - update_metadata:
+        call: googleapis.bigquery.v2.jobs.insert
+        args:
+          projectId: ${project_id}
+          body:
+            jobReference:
+              location: "asia-southeast1"
+            configuration:
+              query:
+                useLegacySql: false
+                query: ${"CALL " + dataset + ".sp_update_metadata('" + entity_name + "', " + string(ingestion_response.body.new_offset) + ")"}
+
+    # ------------------------------------------------
+    # SUCCESS
+    # ------------------------------------------------
+    - done:
+        return:
+          status: "SUCCESS"
+          entity: ${entity_name}
+          records_processed: ${ingestion_response.body.records_fetched}
+          new_offset: ${ingestion_response.body.new_offset}
