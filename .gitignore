@@ -208,9 +208,12 @@ __marimo__/
 .venv
 .venv/
 .env
+.vscode
+.__pycache__
+logs/
+
 
 Modern_GCP_Medallion_dbt_Pipeline-output.md
 
 README.MD
 
-.__pycache__

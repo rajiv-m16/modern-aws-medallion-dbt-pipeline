@@ -1,0 +1,12 @@
+version: 2
+
+sources:
+  - name: dummyjson_api_raw
+    database: awsdatacatalog
+    schema: analytics_dev # This must match the Glue Database name
+    tables:
+      - name: products_raw
+        description: "Raw products data ingested from the API into S3/Bronze layer"
+        identifier: bronze_products # The actual table name in Glue
+      - name: reviews_raw
+        identifier: bronze_reviews

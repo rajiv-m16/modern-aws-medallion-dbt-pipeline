@@ -1,12 +1,12 @@
-
 # Name your project! Project names should contain only lowercase characters
 # and underscores. A good package name should reflect your organization's
 # name or the intended use of these models
-name: 'gcp_medallion_dbt'
-version: '1.0.0'
+name: "aws_data_pipeline"
+version: "1.0.0"
+config-version: 2
 
 # This setting configures which "profile" dbt uses for this project.
-profile: 'gcp_medallion_dbt'
+profile: "aws_data_pipeline"
 
 # These configurations specify where dbt should look for different types of files.
 # The `model-paths` config, for example, states that models in this project can be
@@ -18,10 +18,9 @@ seed-paths: ["seeds"]
 macro-paths: ["macros"]
 snapshot-paths: ["snapshots"]
 
-clean-targets:         # directories to be removed by `dbt clean`
+clean-targets: # directories to be removed by `dbt clean`
   - "target"
   - "dbt_packages"
-
 
 # Configuring models
 # Full documentation: https://docs.getdbt.com/docs/configuring-models
@@ -30,7 +29,14 @@ clean-targets:         # directories to be removed by `dbt clean`
 # directory as views. These settings can be overridden in the individual model
 # files using the `{{ config(...) }}` macro.
 models:
-  gcp_medallion_dbt:
-    # Config indicated by + and applies to all files under models/example/
-    example:
-      +materialized: view
+  aws_data_pipeline:
+    # Default configuration for all models
+    +materialized: table
+    +table_type: iceberg # Use Iceberg for enterprise merge capabilities
+
+    silver:
+      +schema: silver
+      +materialized: incremental
+      +incremental_strategy: merge
+    gold:
+      +schema: gold
