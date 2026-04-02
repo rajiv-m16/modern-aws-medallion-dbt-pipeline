@@ -211,9 +211,9 @@ __marimo__/
 .vscode
 .__pycache__
 logs/
-
+deployment_package.zip
 
 Modern_GCP_Medallion_dbt_Pipeline-output.md
 
 README.MD
-
+lambda_dist/
