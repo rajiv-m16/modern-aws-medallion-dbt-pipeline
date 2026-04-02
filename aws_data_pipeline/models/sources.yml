@@ -1,12 +1,17 @@
-version: 2
-
 sources:
   - name: dummyjson_api_raw
+    description: "Data ingested from DummyJSON API via AWS Lambda"
     database: awsdatacatalog
-    schema: analytics_dev # This must match the Glue Database name
+    schema: analytics_dev # Must match Glue Database name
+    loader: aws_lambda # Helps with lineage documentation
+
     tables:
       - name: products_raw
-        description: "Raw products data ingested from the API into S3/Bronze layer"
-        identifier: bronze_products # The actual table name in Glue
-      - name: reviews_raw
-        identifier: bronze_reviews
+        identifier: products # The ACTUAL name in the Glue Catalog
+        description: "Raw products data in S3/Bronze layer"
+        columns:
+          - name: id
+            description: "Primary key from API"
+            tests:
+              - unique
+              - not_null
